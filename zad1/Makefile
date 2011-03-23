@@ -1,7 +1,7 @@
 all: compile run graph doc
 
 compile: prog.cpp
-	g++ prog.cpp -o prog -O2
+	g++ prog.cpp -o prog -O2 -Wall
 
 run: prog
 	./prog

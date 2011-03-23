@@ -8,33 +8,33 @@
 using namespace std;
 
 typedef long long LL;
-typedef vector<LL> (*ffun)(const vector<LL>&, double);
+typedef double LD;
+typedef vector<LL> (*ffun)(const vector<LL>&, LD);
 
 const int runs = 2; //20
-const int iterations = 10; //100000
-const int stepDistance = 100;
+const int iterations = 20000; //100000
+const int stepDistance = 2000;
 const int m = 50; // 50
 const int L = 60;
-const int minX = -32768;
-const int maxX = 32768;
+const LD minX = -32.768;
+const LD maxX = 32.768;
+
+const LD e = (maxX - minX) / (1LL << L);
 
 
-double ackley(const vector<double> &x) {
-    const double a = 20;
-    const double b = 0.2;
-    assert(m == x.size());
-    double sum1 = 0;
-    double sum2 = 0;
+LD ackley(const vector<LD> &x) {
+    const LD a = 20;
+    const LD b = 0.2;
+    assert(m == (int) x.size());
+    LD sum1 = 0;
+    LD sum2 = 0;
     for (int i = 0; i < m; i++) {
         sum1 += x[i] * x[i];
         sum2 += cos(2 * M_PI * x[i]);
     }
     sum1 /= m;
     sum2 /= m;
-    double ret = -a * exp(-b * sqrt(sum1)) - exp(sum2) + a + exp(1);
-    cout << "ackley " << ret << endl;
-    for (int i = 0; i < m; i++) cout << x[i] << " ";
-    cout << "\n";
+    LD ret = -a * exp(-b * sqrt(sum1)) - exp(sum2) + a + exp(1);
     return ret;
 }
 
@@ -60,8 +60,8 @@ LL decodeGray(LL j) {
     return i;
 }
 
-vector<LL> mutateAdd(const vector<LL> &x, double p) {
-    int prog = p * RAND_MAX;
+vector<LL> mutateAdd(const vector<LL> &x, LD prob) {
+    int prog = prob * RAND_MAX;
     vector<LL> ret(m);
     for (int i = 0; i < m; i++) {
         LL p = 0;
@@ -71,18 +71,17 @@ vector<LL> mutateAdd(const vector<LL> &x, double p) {
         }
         LL mod = 1LL << L;
         if (rand() % 2) {
-            ret[i] = (ret[i] + p) % mod;
+            ret[i] = (x[i] + p) % mod;
         }
         else {
-            ret[i] = (ret[i] + mod - p) % mod;
+            ret[i] = (x[i] + mod - p) % mod;
         }
-//        cout << a << " " << b << " " << aa << " " << bb << endl;
     }
     return ret;
 }
 
-vector<LL> mutateBern(const vector<LL> &x, double p) {
-    int prog = p * RAND_MAX;
+vector<LL> mutateBern(const vector<LL> &x, LD prob) {
+    int prog = prob * RAND_MAX;
     vector<LL> ret(m);
     for (int i = 0; i < m; i++) {
         LL p = 0;
@@ -91,50 +90,42 @@ vector<LL> mutateBern(const vector<LL> &x, double p) {
             p = 2 * p + (q < prog);
         }
         ret[i] = x[i] ^ p;
-        LL a = decodeGray(x[i]);
-        LL b = decodeGray(ret[i]);
-        double e = (double) (maxX - minX) / (1LL << L);
-        double aa = minX + e * a;
-        double bb = minX + e * b;
-        cout << a << " " << b << " " << aa << " " << bb << endl;
     }
     return ret;
 }
 
-vector<double> decode(const vector<LL> &x, bool isGray) {
-    double e = (double) (maxX - minX) / (1LL << L);
-    cout << e << " " << (1LL << L) << endl;
-    vector<double> ret(x.size(), 0);
+vector<LD> decode(const vector<LL> &x, bool isGray) {
+    vector<LD> ret(x.size(), 0);
     for (int i = 0; i < m; i++) {
-        LL j = i;
+        LL j = x[i];
         if (isGray) j = decodeGray(x[i]);
         ret[i] = minX + e * j;
     }
     return ret;
 }
 
-int testAlgorithm(double p, ffun mutate, bool isGray) {
+void testAlgorithm(LD p, ffun mutate, bool isGray) {
     int size = iterations / stepDistance + 1;
-    vector<double> E(size, 0);
-    vector<double> Var(size, 0);
-    vector<double> Min(size, 1e9);
-    vector<double> Max(size, 0);
+    vector<LD> E(size, 0);
+    vector<LD> Var(size, 0);
+    vector<LD> Min(size, 1e9);
+    vector<LD> Max(size, 0);
 
     for (int i = 0; i < runs; i++) {
         cout << "Run " << i << endl;
         vector<LL> x = randomStart();
-        double val = ackley(decode(x, isGray));
+        LD val = ackley(decode(x, isGray));
 
         for (int j = 0; j <= iterations; j++) {
             if (j % stepDistance == 0) {
-                int k = j / 100;
+                int k = j / stepDistance;
                 E[k] += val;
                 Var[k] += val * val;
                 Min[k] = min(Min[k], val);
                 Max[k] = max(Max[k], val);
             }
             vector<LL> y = (*mutate)(x, p);
-            double nextVal = ackley(decode(y, isGray));
+            LD nextVal = ackley(decode(y, isGray));
             if (nextVal < val) {
                 val = nextVal;
                 x.clear();
@@ -151,9 +142,9 @@ int testAlgorithm(double p, ffun mutate, bool isGray) {
 
 int main() {
     srand(12345);
-//    testAlgorithm(0.005, mutateBern, true);
-    testAlgorithm(0.005, mutateBern, false);
-//    testAlgorithm(0.005, mutateAdd, true);
-//    testAlgorithm(0.005, mutateAdd, false);
+    testAlgorithm(0.001, mutateBern, true);
+    testAlgorithm(0.001, mutateBern, false);
+    testAlgorithm(0.001, mutateAdd, true);
+    testAlgorithm(0.001, mutateAdd, false);
 }
 
